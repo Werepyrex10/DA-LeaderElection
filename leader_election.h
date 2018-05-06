@@ -1,64 +1,112 @@
 #pragma once
 
-#include "simgrid/msg.h"
-
+#include <mpi.h>
 #include <iostream>
 #include <string>
 #include <vector>
 #include <thread>
+#include <chrono>
 #include <algorithm>
-#include <atomic>
 
 #define START "start"
 #define FINISH "finish"
 
 #define NO_LEADER -1
 
-#define LEADER_IDLE		"a"
-#define	LEADER_START	"b"
-#define	LEADER_PROPOSE	"c"
-#define	LEADER_ACK		"d"
+#define	LEADER_START	"a"
+#define	LEADER_PROPOSE	"b"
+#define	LEADER_ACK		"c"
 
-XBT_LOG_NEW_DEFAULT_CATEGORY(msg_app_masterworker, "Messages specific for this msg example");
+#define TIMEOUT 50
 
 class Node {
 public:
-	Node(std::vector<std::string> neighbors, int id) {
-		mailbox = neighbors[id];
-		this->neighbors = neighbors;
-		this->id = id;
-		leader = NO_LEADER;
+	Node(int timeout) {
+	    MPI_Init(NULL, NULL);
+	    MPI_Comm_size(MPI_COMM_WORLD, &size);
+	    MPI_Comm_rank(MPI_COMM_WORLD, &id);
+
+	    this->timeout = timeout;
 	}
 
-	void broadcast(std::string task_name, int value) {
-		msg_task_t task;
-		for (int i = 0; i < neighbors.size(); i ++) {
-			task = MSG_task_create(task_name.c_str(), 0, 0, (void *)(long)value);
-			MSG_task_isend(task, neighbors[i].c_str());
+	~Node() {
+		for (int i = 0; i < sends.size(); i ++) {
+			MPI_Cancel(&sends[i]);
+		}
+		MPI_Finalize();
+	}
+
+	void broadcast(std::string msg) {
+		for (int i = 0; i < size; i ++) {
+			if (i == id) {
+				continue;
+			}
+			MPI_Request request;
+			MPI_Isend(msg.c_str(), msg.size(), MPI_CHAR, i, 0, MPI_COMM_WORLD, &request);
+			sends.push_back(request);
 		}
 	}
 
-	std::vector<long> recv() {
-		std::vector<long> ret;
-		msg_task_t task;
-		msg_comm_t irecv;
+	std::string receive(int source, int timeout) {
+		MPI_Status status;
+		MPI_Request request;
+		std::vector<char> msg;
+		int flag = 0;
+		MPI_Iprobe(source, 0, MPI_COMM_WORLD, &flag, &status);
+		if (!flag) {
+			std::this_thread::sleep_for(std::chrono::milliseconds(timeout));
+			MPI_Iprobe(source, 0, MPI_COMM_WORLD, &flag, &status);
+		}
 
-		for (int i = 0; i < neighbors.size(); i ++) {
-			task = nullptr;
-			irecv = MSG_task_irecv(&task, neighbors[id].c_str());
-			MSG_comm_wait(irecv, -1);
-			MSG_comm_destroy(irecv);
+		if (flag) {
+			msg.reserve(10);
+			MPI_Irecv(msg.data(), msg.capacity(), MPI_CHAR, source, 0, MPI_COMM_WORLD, &request);
+			MPI_Wait(&request, &status);
 
-			long proposed = (long)MSG_task_get_data(task);
-			MSG_task_destroy(task);
-			ret.push_back(proposed);
+			return msg.data();
+		}
+
+		return "";
+	}
+
+	std::vector<std::string> gather() {
+		std::vector<std::string> ret;
+		for (int i = 0; i < size; i ++) {
+			if (i == id) {
+				continue;
+			}
+			
+			std::string msg = receive(i, 0);
+			if (!msg.empty()) {
+				ret.push_back(msg);
+			}
 		}
 
 		return ret;
 	}
 
-	std::vector<std::string> neighbors;
-	std::string mailbox;
-	int leader;
-	int id;
+	std::vector<std::string> gather_with_timeout() {
+		std::vector<std::string> ret;
+
+		for (int i = 0; i < size; i ++) {
+			if (i == id) {
+				continue;
+			}
+
+			std::string msg = receive(i, timeout);
+			if (!msg.empty()) {
+				ret.push_back(msg);
+			}
+		}
+
+		return ret;
+	}
+
+	int getId() {
+		return id;
+	}
+
+private:
+	int id, size, timeout;
+	std::vector<MPI_Request> sends;
 };

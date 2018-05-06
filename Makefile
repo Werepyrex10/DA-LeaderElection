@@ -1,7 +1,7 @@
-CXX=g++
+CXX=mpic++
 CXXFLAGS=--std=c++11 -g
-CINCLUDE=-I./simgrid/include
-LDFLAGS=-lsimgrid -lpthread
+CINCLUDE=
+LDFLAGS=
 
 build: leader_election
 
@@ -12,7 +12,7 @@ leader_election.o: leader_election.cpp
 	$(CXX) -c $(CXXFLAGS) $(CINCLUDE) $^ -o $@
 
 run: build
-	./leader_election platform.xml deployment.xml
+	mpirun -np 5 ./leader_election
 
 clean:
 	rm -rf leader_election leader_election.o
