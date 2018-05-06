@@ -1,21 +1,18 @@
 CXX=g++
-CXXFLAGS=--std=c++11
+CXXFLAGS=--std=c++11 -g
 CINCLUDE=-I./simgrid/include
-LDFLAGS=-lsimgrid
+LDFLAGS=-lsimgrid -lpthread
 
-build: app-masterworker
+build: leader_election
 
-app-masterworker: app-masterworker.o
+leader_election: leader_election.o
 	$(CXX) $(CXXFLAGS) $^ -o $@ $(CINCLUDE) $(LDFLAGS)
 
-app-masterworker.o: app-masterworker.c
+leader_election.o: leader_election.cpp
 	$(CXX) -c $(CXXFLAGS) $(CINCLUDE) $^ -o $@
 
-test: build
-	./app-masterworker small_platform.xml app-masterworker_d.xml
-
 run: build
-	./app-masterworker platform.xml deployment.xml
+	./leader_election platform.xml deployment.xml
 
 clean:
-	rm -rf app-masterworker app-masterworker.o
+	rm -rf leader_election leader_election.o
