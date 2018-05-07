@@ -7,38 +7,38 @@
 #include <chrono>
 #include <algorithm>
 
-#define LEADER_IDLE		"a"
-#define	LEADER_START	"b"
-#define	LEADER_PROPOSE	"b"
-#define	LEADER_ACK		"d"
+#define LEADER_IDLE     "a"
+#define LEADER_START    "b"
+#define LEADER_PROPOSE  "b"
+#define LEADER_ACK      "d"
 
-#define LEADER_ALIVE	"e"
+#define LEADER_ALIVE    "e"
 
-#define NO_LEADER 		-1
-#define MSG_SIZE		64
+#define NO_LEADER       -1
+#define MSG_SIZE        64
 
 class Node
 {
 public:
-	Node(int timeout);
-	~Node();
+    Node(int timeout);
+    ~Node();
 
-	void send(int dst, std::string msg);
-	std::string receive(int src, int timeout);
+    void send(int dst, std::string msg);
+    std::string receive(int src, int timeout);
 
-	void broadcast(std::string msg);
-	std::vector<std::string> gather();
-	std::vector<std::string> gatherWithTimeout();
+    void broadcast(std::string msg);
+    std::vector<std::string> gather();
+    std::vector<std::string> gatherWithTimeout();
 
-	bool checkLeaderStatus();
+    bool checkLeaderStatus();
 
-	int getId();
-	int getLeaderId();
-	int getState();
+    int getId();
+    int getLeaderId();
+    int getState();
 
-	void setLeaderId(int leader);
-	void setState(int state);
+    void setLeaderId(int leader);
+    void setState(int state);
 private:
-	int id, size, timeout, leader, state;
-	std::vector<MPI_Request> sends;
+    int id, size, timeout, leader, state;
+    std::vector<MPI_Request> sends;
 };
