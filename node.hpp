@@ -9,7 +9,7 @@
 
 #define LEADER_IDLE     "a"
 #define LEADER_START    "b"
-#define LEADER_PROPOSE  "b"
+#define LEADER_PROPOSE  "c"
 #define LEADER_ACK      "d"
 
 #define LEADER_ALIVE    "e"
