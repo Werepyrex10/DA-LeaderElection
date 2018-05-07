@@ -1,12 +1,10 @@
 #include "node.hpp"
 
-Node::Node(int timeout) : leader(NO_LEADER)
+Node::Node(int timeout) : timeout(timeout), leader(NO_LEADER)
 {
     MPI_Init(NULL, NULL);
     MPI_Comm_size(MPI_COMM_WORLD, &size);
     MPI_Comm_rank(MPI_COMM_WORLD, &id);
-
-    this->timeout = timeout / size;
 }
 
 Node::~Node()
@@ -19,14 +17,12 @@ Node::~Node()
 
 void Node::send(int dst, std::string msg)
 {
-    if (i == id) {
+    if (dst == id) {
         return;
     }
     MPI_Request request;
-    MPI_Status status;
 
     MPI_Isend(msg.c_str(), msg.size(), MPI_CHAR, dst, 0, MPI_COMM_WORLD, &request);
-    MPI_Wait(&request, &status);
     sends.push_back(request);
 }
 
@@ -34,7 +30,8 @@ std::string Node::receive(int src, int timeout)
 {
     MPI_Status status;
     MPI_Request request;
-    std::vector<char> msg;
+    char msg[MSG_SIZE];
+    memset(msg, 0, MSG_SIZE * sizeof(char));
     int flag = 0;
     MPI_Iprobe(src, 0, MPI_COMM_WORLD, &flag, &status);
     if (!flag) {
@@ -43,14 +40,13 @@ std::string Node::receive(int src, int timeout)
     }
 
     if (flag) {
-        msg.reserve(MSG_SIZE);
-        MPI_Irecv(msg.data(), msg.capacity(), MPI_CHAR, src, 0, MPI_COMM_WORLD, &request);
+        MPI_Irecv(msg, MSG_SIZE, MPI_CHAR, src, 0, MPI_COMM_WORLD, &request);
         MPI_Wait(&request, &status);
 
-        return msg.data();
+        return std::string(msg);
     }
 
-    return msg;
+    return "";
 }
 
 void Node::broadcast(std::string msg)
@@ -95,17 +91,17 @@ std::vector<std::string> Node::gatherWithTimeout()
     return ret;
 }
 
-bool Node::checkLeaderStatus()
+bool Node::checkStatus(int leader, std::string msg)
 {
     if (leader == NO_LEADER) {
         return false;
     }
 
-    send(leader, LEADER_ALIVE);
+    send(leader, msg);
 
     std::string ret = receive(leader, timeout);
 
-    return !msg.empty();
+    return !ret.empty();
 }
 
 int Node::getId() { return id; }

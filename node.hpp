@@ -6,13 +6,8 @@
 #include <thread>
 #include <chrono>
 #include <algorithm>
-
-#define LEADER_IDLE     "a"
-#define LEADER_START    "b"
-#define LEADER_PROPOSE  "c"
-#define LEADER_ACK      "d"
-
-#define LEADER_ALIVE    "e"
+#include <iostream>
+#include <cstring>
 
 #define NO_LEADER       -1
 #define MSG_SIZE        64
@@ -30,7 +25,7 @@ public:
     std::vector<std::string> gather();
     std::vector<std::string> gatherWithTimeout();
 
-    bool checkLeaderStatus();
+    bool checkStatus(int leader, std::string msg);
 
     int getId();
     int getLeaderId();
