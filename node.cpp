@@ -22,9 +22,11 @@ void Node::send(int dst, std::string msg)
     if (i == id) {
         return;
     }
-
     MPI_Request request;
+    MPI_Status status;
+
     MPI_Isend(msg.c_str(), msg.size(), MPI_CHAR, dst, 0, MPI_COMM_WORLD, &request);
+    MPI_Wait(&request, &status);
     sends.push_back(request);
 }
 
