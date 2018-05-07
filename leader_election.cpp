@@ -1,12 +1,22 @@
-#include "leader_election.h"
+#include "leader_election.hpp"
 
 int main(int argc, char** argv) {
-    Node my_node(50);
+	Node my_node(TIMEOUT);
 
-    my_node.broadcast("Hello");
-    auto ret = my_node.gather_with_timeout();
+	while(true) {
+		std::this_thread::sleep_for(std::chrono::milliseconds(ELECTION_TIMEOUT));
 
-    std:: cout << my_node.getId() << " " << ret.size() << std::endl;
+		if (my_node.checkLeaderStatus()) {
+			continue;
+		}
 
-    return 0;
+		//Elect new leader
+	}
+
+	my_node.broadcast("Hello");
+	auto ret = my_node.gatherWithTimeout();
+
+	std:: cout << my_node.getId() << " " << ret.size() << std::endl;
+
+	return 0;
 }
