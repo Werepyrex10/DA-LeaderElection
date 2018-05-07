@@ -1,7 +1,7 @@
 CXX=mpic++
 CXXFLAGS=--std=c++11 -g
 CINCLUDE=
-LDFLAGS=
+LDFLAGS=-lm
 
 build: leader_election
 
@@ -18,4 +18,4 @@ run: build
 	mpirun -np 5 ./leader_election
 
 clean:
-	rm -rf leader_election leader_election.o
+	rm -rf leader_election leader_election.o node.o
