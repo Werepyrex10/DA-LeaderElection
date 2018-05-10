@@ -1,10 +1,18 @@
 #include "node.hpp"
 
-Node::Node(int timeout) : timeout(timeout), leader(NO_LEADER)
+static std::string LEADER_IDLE("a");
+static std::string LEADER_START("b");
+static std::string LEADER_PROPOSE("c");
+static std::string LEADER_ACK("d");
+static std::string LEADER_ALIVE("e");
+
+Node::Node(int timeout) : timeout(timeout), leader(NO_LEADER), state(LEADER_IDLE)
 {
     MPI_Init(NULL, NULL);
     MPI_Comm_size(MPI_COMM_WORLD, &size);
     MPI_Comm_rank(MPI_COMM_WORLD, &id);
+
+    epoch = 0;
 }
 
 Node::~Node()
@@ -91,15 +99,12 @@ std::vector<std::string> Node::gatherWithTimeout()
     return ret;
 }
 
-bool Node::checkStatus(int leader, std::string msg)
+bool Node::checkStatus(int node, std::string msg)
 {
-    if (leader == NO_LEADER) {
-        return false;
-    }
 
-    send(leader, msg);
+    send(node, msg);
 
-    std::string ret = receive(leader, timeout);
+    std::string ret = receive(node, timeout);
 
     return !ret.empty();
 }
@@ -108,8 +113,14 @@ int Node::getId() { return id; }
 
 int Node::getLeaderId() { return leader; }
 
-int Node::getState() { return state; }
+std::string Node::getState() { return state; }
+
+int Node::getEpoch() { return epoch; }
 
 void Node::setLeaderId(int leader) { this->leader = leader; }
 
-void Node::setState(int state) { this->state = state; }
+void Node::setState(std::string state) { this->state = state; }
+
+void Node::setEpoch(int epoch) { this->epoch = epoch; }
+
+void Node::advanceEpoch() { epoch++; }
