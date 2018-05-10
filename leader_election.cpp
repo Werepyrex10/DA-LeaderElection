@@ -39,19 +39,18 @@ int proposeState(Node& my_node, std::vector<std::string>& msg)
         auto parts = splitStringByDelim(msg[i], "-");
         int num = parts[2][0] - '0';
 
-        if (leader <= num) {
-            leader = num;
+        if (my_node.getLeaderId() <= num) {
+            my_node.setLeaderId(num) ;
         }
     }
 
-    return leader;
+    return my_node.getLeaderId();
 }
 
 int ackState(Node& my_node, std::vector<std::string>& msg)
 {
     for (int i = 0; i < msg.size(); i++) {
         auto parts = splitStringByDelim(msg[i], "-");
-        int ret = checkMessage(my_node, parts);
 
         if (parts[2][0] != std::to_string(my_node.getLeaderId())[0]) {
             return false;
@@ -63,28 +62,22 @@ int ackState(Node& my_node, std::vector<std::string>& msg)
 
 void checkMessages(Node& my_node, std::vector<std::string>& msg)
 {
-    for (int i = 0; i < 2; i++) {
-        for (auto it = msg.begin(); it != msg.end(); it++) {
-            auto parts = splitStringByDelim(*it, "-");
-            int msg_epoch = std::stoi(parts[0]);
+    for (auto it = msg.begin(); it != msg.end(); it++) {
+        auto parts = splitStringByDelim(*it, "-");
+        int msg_epoch = parts[0][0] - '0';
 
-            if (msg_epoch < my_node.getEpoch()) {
-                msg.erase(it);
-                continue;
+        if (msg_epoch < my_node.getEpoch()) {
+            return;
+        }
+        else if (msg_epoch > my_node.getEpoch()) {
+            return;
+        }
+        else {
+            if (parts[1] < my_node.getState()) {
+                return;
             }
-            else if (msg_epoch > my_node.getEpoch()) {
-                my_node.setEpoch(msg_epoch);
+            else if (parts[1] > my_node.getState()){
                 my_node.setState(parts[1]);
-                continue;
-            }
-            else {
-                if (parts[1] < my_node.getState()) {
-                    msg.erase(it);
-                    continue;
-                }
-                else if (parts[1] > my_node.getState()){
-                    my_node.setState(parts[1]);
-                }
             }
         }
     }
@@ -92,26 +85,32 @@ void checkMessages(Node& my_node, std::vector<std::string>& msg)
 
 void processByState(Node& my_node, std::vector<std::string>& msg)
 {
-    switch(my_node.getState[0])
+    switch(my_node.getState()[0])
     {
-        case LEADER_START[0]:
-        auto ret = startState(my_node, msg);
+        case 'b':
+        {
+            auto ret = startState(my_node, msg);
+        }
         break;
 
-        case LEADER_PROPOSE[0]:
-        auto ret = proposeState(my_node, msg);
-        my_node.setLeaderId(std::max(my_node.getLeaderId(), ret));
+        case 'c':
+        {
+            auto ret = proposeState(my_node, msg);
+            my_node.setLeaderId(std::max(my_node.getLeaderId(), ret));
+        }
         break;
 
-        case LEADER_ACK[0]:
-        auto ret = ackState(my_node, msg);
+        case 'd':
+        {
+            auto ret = ackState(my_node, msg);
+        }
         break;
     }
 }
 
 int main(int argc, char** argv) {
     Node my_node(TIMEOUT);
-    auto start;
+    auto start = std::chrono::system_clock::now();
     auto end = start;
     std::chrono::duration<double> diff;
     int wait = std::round(ELECTION_TIMEOUT);
@@ -119,31 +118,36 @@ int main(int argc, char** argv) {
     signal(SIGINT, int_handler);
 
     do {
-        switch(my_node.getState[0])
+
+        switch(my_node.getState()[0])
         {
-            case LEADER_IDLE[0]:
+            case 'a':
             //LEADER_START
             my_node.setState(LEADER_START);
-            my_node.broadcast(std::to_string(epoch) + "-" + LEADER_START + "-0");
+            my_node.broadcast(std::to_string(my_node.getEpoch()) + "-" + LEADER_START + "-0");
             break;
 
-            case LEADER_START[0]:
+            case 'b':
             //LEADER_PROPOSE
             my_node.setLeaderId(NO_LEADER);
             my_node.setState(LEADER_PROPOSE);
-            my_node.broadcast(std::to_string(epoch) + "-" + LEADER_PROPOSE + "-" + std::to_string(my_node.getId()));
+            my_node.broadcast(std::to_string(my_node.getEpoch()) + "-" + LEADER_PROPOSE + "-" + std::to_string(my_node.getId()));
             break;
 
-            case LEADER_PROPOSE[0]:
+            case 'c':
             //LEADER_ACK
             my_node.setState(LEADER_ACK);
-            my_node.broadcast(std::to_string(epoch) + "-" + LEADER_ACK + std::to_string(my_node.getId()));
+            my_node.broadcast(std::to_string(my_node.getEpoch()) + "-" + LEADER_ACK + "-" + std::to_string(my_node.getId()));
 
-            case LEADER_ACK[0]:
+            case 'd':
             //LEADER_IDLE
             my_node.setState(LEADER_IDLE);
             std::cout << my_node.getId() << "'s leader is " << my_node.getLeaderId() << std::endl;
-            std::this_thread::sleep_for(std::chrono::seconds(wait));
+            MPI_Barrier(MPI_COMM_WORLD);
+            if (my_node.getId() == 0) {
+                std::cout << "-------------------------------------------------------\n";
+            }
+            MPI_Barrier(MPI_COMM_WORLD);
             my_node.advanceEpoch();
             break;
 

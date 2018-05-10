@@ -15,7 +15,7 @@ node.o: node.cpp
 	$(CXX) -c $(CXXFLAGS) $(CINCLUDE) $^ -o $@
 
 run: build
-	mpirun -np 5 ./leader_election
+	mpirun -np 10 ./leader_election
 
 clean:
 	rm -rf leader_election leader_election.o node.o
