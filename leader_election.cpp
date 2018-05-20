@@ -137,7 +137,7 @@ int main(int argc, char** argv) {
             case 'c':
             //LEADER_ACK
             my_node.setState(LEADER_ACK);
-            my_node.broadcast(std::to_string(my_node.getEpoch()) + "-" + LEADER_ACK + "-" + std::to_string(my_node.getId()));
+            my_node.broadcast(std::to_string(my_node.getEpoch()) + "-" + LEADER_ACK + "-" + std::to_string(my_node.getLeaderId()));
 
             case 'd':
             //LEADER_IDLE
